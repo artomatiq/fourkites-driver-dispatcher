@@ -15,7 +15,7 @@ from email.utils import parseaddr
 import boto3
 import urllib.request
 import urllib.error
-from urllib.parse import unquote_plus, quote
+from urllib.parse import unquote_plus
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("worker")
@@ -119,22 +119,36 @@ def extract_fields(body: str) -> dict:
 def _http_json(method: str, url: str, headers: dict, body: dict | None = None) -> dict:
     data = json.dumps(body).encode() if body is not None else None
     req = urllib.request.Request(url, data=data, headers=headers, method=method)
-    with urllib.request.urlopen(req, timeout=30) as r:
-        raw = r.read()
-        return json.loads(raw) if raw else {}
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            raw = r.read()
+            return json.loads(raw) if raw else {}
+    except urllib.error.HTTPError as e:
+        # Surface FourKites' response body — the generic "HTTP Error 500" hides the real reason.
+        raise RuntimeError(f"{method} {url} -> {e.code}: {e.read().decode('utf-8', 'replace')}") from None
 
 
 def assign_driver(tms_id: str, phone: str) -> dict:
-    # FourKites' gateway expects the key in the `apikey` query parameter.
-    url = f"{CFG['api_url']}?apikey={quote(CFG['api_key'])}"
+    # POST https://api.fourkites.com/load/update/dispatcher-api/async
+    # apikey goes in the header; load is located via identifierKeys[].
+    headers = {"Content-Type": "application/json", "apikey": CFG["api_key"]}
     payload = {
-        "loadNumber": tms_id,
-        "driverPhone": phone,
-        "carrierScac": CFG.get("carrier_scac", ""),
+        "updates": [
+            {
+                "identifierKeys": [
+                    {
+                        "identifier": tms_id,
+                        "identifierType": CFG.get("identifier_type", "loadNumber"),
+                    }
+                ],
+                "assignmentUpdate": {
+                    "operatingCarrierScac": CFG.get("carrier_scac", ""),
+                    "driverPhone": phone,
+                },
+            }
+        ]
     }
-    if CFG.get("company_id") and CFG["company_id"] != "-":
-        payload["companyId"] = CFG["company_id"]
-    return _http_json("POST", url, {"Content-Type": "application/json"}, payload)
+    return _http_json("POST", CFG["api_url"], headers, payload)
 
 
 def reply(to_addr: str, subject: str, text: str) -> None:
