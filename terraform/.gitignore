@@ -1,0 +1,14 @@
+# Terraform state (remote in S3, but local copies/backups can appear)
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform.lock.hcl
+
+# Secrets / variable files with real values
+*.tfvars
+*.auto.tfvars
+!terraform.tfvars.example
+
+# Plan output
+*.tfplan
+crash.log

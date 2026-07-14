@@ -1,0 +1,14 @@
+# Environment / secrets
+.env
+.env.*
+
+# OS files
+.DS_Store
+
+# Terraform (see terraform/.gitignore for the full set)
+*.tfstate
+*.tfstate.*
+.terraform/
+*.tfvars
+*.auto.tfvars
+!*.tfvars.example

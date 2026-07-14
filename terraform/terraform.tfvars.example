@@ -1,0 +1,24 @@
+# Copy to terraform.auto.tfvars (gitignored). Real secrets go there, not here.
+
+region      = "us-east-1"
+name_prefix = "fourkites-dispatch"
+
+mail_domain       = "bot.carolinascourier.com"
+intake_local_part = "dispatch"
+admin_reply_from  = "auto@bot.carolinascourier.com"
+
+# SSH is optional (SSM by default):
+# ssh_key_name     = "my-keypair"
+# ssh_ingress_cidr = "203.0.113.4/32"
+
+# Empty on the first apply; set after the Elastic IP is allowlisted.
+fourkites_api_key     = ""
+fourkites_api_url     = ""
+fourkites_auth_header = "Authorization"
+fourkites_company_id  = ""
+carrier_scac          = "COUB"
+
+# name (lowercase) -> E.164. Real numbers go in terraform.auto.tfvars only.
+driver_phonebook = {
+  # somename = "+1XXXXXXXXXX"
+}
