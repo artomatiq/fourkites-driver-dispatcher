@@ -15,7 +15,7 @@ from email.utils import parseaddr
 import boto3
 import urllib.request
 import urllib.error
-from urllib.parse import unquote_plus
+from urllib.parse import unquote_plus, quote
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 log = logging.getLogger("worker")
@@ -112,10 +112,8 @@ def _http_json(method: str, url: str, headers: dict, body: dict | None = None) -
 
 
 def assign_driver(tms_id: str, phone: str) -> dict:
-    headers = {
-        CFG.get("auth_header", "Authorization"): CFG["api_key"],
-        "Content-Type": "application/json",
-    }
+    # FourKites' gateway expects the key in the `apikey` query parameter.
+    url = f"{CFG['api_url']}?apikey={quote(CFG['api_key'])}"
     payload = {
         "loadNumber": tms_id,
         "driverPhone": phone,
@@ -123,7 +121,7 @@ def assign_driver(tms_id: str, phone: str) -> dict:
     }
     if CFG.get("company_id") and CFG["company_id"] != "-":
         payload["companyId"] = CFG["company_id"]
-    return _http_json("POST", CFG["api_url"], headers, payload)
+    return _http_json("POST", url, {"Content-Type": "application/json"}, payload)
 
 
 def reply(to_addr: str, subject: str, text: str) -> None:
