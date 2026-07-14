@@ -82,29 +82,46 @@ def extract_body_text(msg) -> str:
     return ""
 
 
-EXTRACT_PROMPT = """A dispatcher forwards an automated load-tender email and adds a short
-note saying which driver to assign — either a driver's first name or a phone number.
+# Gmail's quoted-forward boundary. Text above the first one is the dispatcher's fresh
+# note; everything below is the quoted tender plus any stale notes from earlier forwards.
+FORWARD_MARKER = re.compile(r"^\s*-+\s*Forwarded message\s*-+\s*$", re.MULTILINE)
+
+
+def split_note(body: str) -> tuple[str, str]:
+    m = FORWARD_MARKER.search(body)
+    if not m:
+        return body, body  # not a forward — treat the whole body as both note and tender
+    return body[: m.start()].strip(), body[m.start() :]
+
+
+EXTRACT_PROMPT = """A dispatcher forwards an automated load-tender email and, above the
+forwarded content, may add a short NOTE naming which driver to assign — a driver's first
+name or a phone number.
 
 Known drivers: {drivers}
 
 Return ONLY minified JSON: {{"tmsId":string, "driverName":string|null, "driverPhone":string|null}}
-- tmsId: the TMS / tender ID from the load tender.
-- driverName: if the dispatcher's note refers to one of the known drivers, that driver's
-  name exactly as listed above; otherwise null.
-- driverPhone: if the note gives a phone number for the driver, in +E.164; otherwise null.
+- tmsId: the TMS / tender ID, from the TENDER section.
+- driverName: if the NOTE names one of the known drivers, that driver's name exactly as
+  listed above; otherwise null.
+- driverPhone: if the NOTE gives a phone number, in +E.164; otherwise null.
 
-The driver comes ONLY from the dispatcher's own note. Names and phone numbers inside the
-tender itself — shipper, carrier, carrier representative, any Load Report / Shipper /
-Carrier contact — are NEVER the driver; ignore them. If the note names no known driver and
-gives no phone, both driverName and driverPhone are null.
+The driver comes ONLY from the NOTE. If the NOTE is empty or names no known driver and
+gives no phone, both driverName and driverPhone are null. Names and phone numbers in the
+TENDER — shipper, carrier, carrier rep, any contact — are NEVER the driver; ignore them.
 
-Email:
-{body}
+NOTE:
+{note}
+
+TENDER:
+{tender}
 """
 
 
-def extract_fields(body: str) -> dict:
-    prompt = EXTRACT_PROMPT.format(drivers=", ".join(sorted(PHONEBOOK)) or "(none)", body=body[:8000])
+def extract_fields(note: str, tender: str) -> dict:
+    prompt = EXTRACT_PROMPT.format(
+        drivers=", ".join(sorted(PHONEBOOK)) or "(none)", note=note[:2000], tender=tender[:8000]
+    )
     resp = bedrock.converse(
         modelId=BEDROCK_MODEL_ID,
         messages=[{"role": "user", "content": [{"text": prompt}]}],
@@ -167,7 +184,8 @@ def process_object(bucket: str, key: str) -> None:
     msg = message_from_bytes(obj["Body"].read())
     admin = parseaddr(msg.get("Reply-To") or msg.get("From", ""))[1]
 
-    fields = extract_fields(extract_body_text(msg))
+    note, tender = split_note(extract_body_text(msg))
+    fields = extract_fields(note, tender)
     tms_id = (fields.get("tmsId") or "").strip()
     phone = normalize_phone(fields.get("driverPhone")) or lookup_phone(fields.get("driverName"))
 
