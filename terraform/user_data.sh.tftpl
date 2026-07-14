@@ -8,8 +8,7 @@ install -d -o root -g root /opt/worker
 aws s3 cp "s3://${mail_bucket}/deploy/worker.py" /opt/worker/worker.py --region "${region}"
 aws s3 cp "s3://${mail_bucket}/deploy/requirements.txt" /opt/worker/requirements.txt --region "${region}"
 
-python3 -m pip install --upgrade pip
-python3 -m pip install -r /opt/worker/requirements.txt
+python3 -m pip install --root-user-action=ignore -r /opt/worker/requirements.txt
 
 cat >/opt/worker/worker.env <<EOF
 AWS_REGION=${region}
