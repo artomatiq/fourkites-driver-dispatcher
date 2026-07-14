@@ -46,15 +46,18 @@ data "aws_iam_policy_document" "worker" {
     sid     = "Bedrock"
     actions = ["bedrock:InvokeModel"]
     resources = [
-      "arn:aws:bedrock:*:${data.aws_caller_identity.current.account_id}:inference-profile/${var.bedrock_model_id}",
-      "arn:aws:bedrock:*::foundation-model/anthropic.claude-haiku-4-5-*",
+      "arn:aws:bedrock:*::foundation-model/deepseek*",
+      "arn:aws:bedrock:*:${data.aws_caller_identity.current.account_id}:inference-profile/*deepseek*",
     ]
   }
 
   statement {
-    sid       = "SsmRead"
-    actions   = ["ssm:GetParameter", "ssm:GetParametersByPath"]
-    resources = ["arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${local.ssm_prefix}/*"]
+    sid     = "SsmRead"
+    actions = ["ssm:GetParameter", "ssm:GetParametersByPath"]
+    resources = [
+      "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${local.ssm_prefix}",
+      "arn:aws:ssm:${var.region}:${data.aws_caller_identity.current.account_id}:parameter${local.ssm_prefix}/*",
+    ]
   }
 }
 

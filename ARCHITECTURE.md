@@ -37,7 +37,7 @@ dispatch@bot.carolinascourier.com
 │                                              │
 │  1. s3:GetObject  → fetch raw .eml           │
 │  2. parse MIME (stdlib email module)          │
-│  3. Bedrock: Claude Haiku 4.5 extracts        │
+│  3. Bedrock: DeepSeek V3.2 extracts           │
 │       { tmsId, driverName, driverPhone? }     │
 │  4. resolve phone: extracted phone, else      │
 │       look up name in SSM phonebook           │
@@ -82,9 +82,11 @@ failures fall to the DLQ instead of being lost.
 **`t4g.nano`** is enough — the LLM runs in Bedrock, not on the box; the instance only does
 I/O on one email at a time.
 
-**Claude Haiku 4.5 via Bedrock** — IAM-authorized (no API key on the box), billed through
-AWS. Haiku is a strong, cheap extractor for the core task: pulling structured fields from
-inconsistently-formatted emails. Bedrock model access must be enabled once in the console.
+**DeepSeek V3.2 via Bedrock** (Converse API) — IAM-authorized (no API key on the box),
+billed through AWS. A cheap extractor for the core task: pulling structured fields from
+inconsistently-formatted emails. The Converse API is model-agnostic, so swapping models is
+just a `bedrock_model_id` change. (Anthropic models were avoided because they require an
+account use-case form; DeepSeek is an AWS Marketplace model with no such gate.)
 
 **Phonebook in SSM.** Driver phone numbers are PII and stay out of git: the
 `driver_phonebook` variable (set in the gitignored `terraform.auto.tfvars`) is written to

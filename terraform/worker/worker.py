@@ -1,7 +1,7 @@
 """FourKites driver-dispatcher worker.
 
-SQS pointer -> S3 .eml -> Bedrock field extraction -> phone resolve -> FourKites
-Assignment Update -> SES reply -> archive. Config/secrets come from SSM.
+SQS pointer -> S3 .eml -> Bedrock (Converse) field extraction -> phone resolve ->
+FourKites Assignment Update -> SES reply -> archive. Config/secrets come from SSM.
 """
 from __future__ import annotations
 
@@ -92,14 +92,13 @@ Email:
 
 
 def extract_fields(body: str) -> dict:
-    req = {
-        "anthropic_version": "bedrock-2023-05-31",
-        "max_tokens": 512,
-        "messages": [{"role": "user", "content": EXTRACT_PROMPT.format(body=body[:8000])}],
-    }
-    resp = bedrock.invoke_model(modelId=BEDROCK_MODEL_ID, body=json.dumps(req))
-    payload = json.loads(resp["body"].read())
-    text = payload["content"][0]["text"].strip()
+    resp = bedrock.converse(
+        modelId=BEDROCK_MODEL_ID,
+        messages=[{"role": "user", "content": [{"text": EXTRACT_PROMPT.format(body=body[:8000])}]}],
+        inferenceConfig={"maxTokens": 2048},
+    )
+    # Concatenate text blocks (reasoning models emit a separate reasoningContent block).
+    text = "".join(b.get("text", "") for b in resp["output"]["message"]["content"])
     match = re.search(r"\{.*\}", text, re.DOTALL)
     return json.loads(match.group(0) if match else text)
 

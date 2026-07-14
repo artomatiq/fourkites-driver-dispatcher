@@ -42,7 +42,7 @@ variable "ssh_ingress_cidr" {
 
 variable "bedrock_model_id" {
   type    = string
-  default = "us.anthropic.claude-haiku-4-5-20251001-v1:0"
+  default = "deepseek.v3.2"
 }
 
 variable "max_receive_count" {
