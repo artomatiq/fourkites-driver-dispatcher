@@ -82,9 +82,21 @@ def extract_body_text(msg) -> str:
     return ""
 
 
-EXTRACT_PROMPT = """You extract structured fields from a forwarded freight load email.
-Return ONLY minified JSON with keys: tmsId (string), driverName (string or null),
-driverPhone (string or null), confidence (0-1 number). No prose.
+EXTRACT_PROMPT = """A dispatcher forwards an automated load-tender email and adds a short
+note saying which driver to assign — either a driver's first name or a phone number.
+
+Known drivers: {drivers}
+
+Return ONLY minified JSON: {{"tmsId":string, "driverName":string|null, "driverPhone":string|null}}
+- tmsId: the TMS / tender ID from the load tender.
+- driverName: if the dispatcher's note refers to one of the known drivers, that driver's
+  name exactly as listed above; otherwise null.
+- driverPhone: if the note gives a phone number for the driver, in +E.164; otherwise null.
+
+The driver comes ONLY from the dispatcher's own note. Names and phone numbers inside the
+tender itself — shipper, carrier, carrier representative, any Load Report / Shipper /
+Carrier contact — are NEVER the driver; ignore them. If the note names no known driver and
+gives no phone, both driverName and driverPhone are null.
 
 Email:
 {body}
@@ -92,9 +104,10 @@ Email:
 
 
 def extract_fields(body: str) -> dict:
+    prompt = EXTRACT_PROMPT.format(drivers=", ".join(sorted(PHONEBOOK)) or "(none)", body=body[:8000])
     resp = bedrock.converse(
         modelId=BEDROCK_MODEL_ID,
-        messages=[{"role": "user", "content": [{"text": EXTRACT_PROMPT.format(body=body[:8000])}]}],
+        messages=[{"role": "user", "content": [{"text": prompt}]}],
         inferenceConfig={"maxTokens": 2048},
     )
     # Concatenate text blocks (reasoning models emit a separate reasoningContent block).
@@ -144,7 +157,10 @@ def process_object(bucket: str, key: str) -> None:
     tms_id = (fields.get("tmsId") or "").strip()
     phone = normalize_phone(fields.get("driverPhone")) or lookup_phone(fields.get("driverName"))
 
+    log.info("extracted tmsId=%r phone=%r (from %r)", tms_id, phone, admin)
+
     if not tms_id:
+        log.info("no load id -> asking admin to resend")
         reply(admin, "Load assignment — could not read load ID",
               "I couldn't find the load/TMS ID in that email. Please resend with the load number.")
         archive(bucket, key)
@@ -152,6 +168,7 @@ def process_object(bucket: str, key: str) -> None:
 
     if not phone:
         name = fields.get("driverName") or "the driver"
+        log.info("no phone for %r -> asking admin", name)
         reply(admin, f"Load {tms_id} — need a phone number",
               f"I couldn't resolve a phone for {name}. Please reply with the driver's phone number.")
         archive(bucket, key)
@@ -159,6 +176,7 @@ def process_object(bucket: str, key: str) -> None:
 
     result = assign_driver(tms_id, phone)
     status = result.get("status") or result.get("message") or "submitted"
+    log.info("assigned load %s phone %s -> FourKites: %s", tms_id, phone, status)
     reply(admin, f"Load {tms_id} — driver assigned",
           f"Assigned {phone} to load {tms_id}.\nFourKites status: {status}")
     archive(bucket, key)
