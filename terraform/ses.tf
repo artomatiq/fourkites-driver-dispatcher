@@ -17,7 +17,9 @@ resource "aws_ses_active_receipt_rule_set" "main" {
 resource "aws_ses_receipt_rule" "intake_to_s3" {
   name          = "${var.name_prefix}-intake-to-s3"
   rule_set_name = aws_ses_receipt_rule_set.main.rule_set_name
-  recipients    = ["${var.intake_local_part}@${var.mail_domain}"]
+  # Accept both the intake address and the bot's reply-from, so a human can reply to
+  # the auto-reply and have it loop back into the pipeline.
+  recipients    = ["${var.intake_local_part}@${var.mail_domain}", var.admin_reply_from]
   enabled       = true
   scan_enabled  = true
 

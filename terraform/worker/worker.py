@@ -185,6 +185,8 @@ def process_object(bucket: str, key: str) -> None:
     admin = parseaddr(msg.get("Reply-To") or msg.get("From", ""))[1]
 
     note, tender = split_note(extract_body_text(msg))
+    # Prepend the subject — on a reply the tmsId only survives there (e.g. "Re: Load 208824217 …").
+    tender = f"Subject: {msg.get('Subject', '')}\n\n{tender}"
     fields = extract_fields(note, tender)
     tms_id = (fields.get("tmsId") or "").strip()
     phone = normalize_phone(fields.get("driverPhone")) or lookup_phone(fields.get("driverName"))
