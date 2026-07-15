@@ -43,7 +43,11 @@ resource "aws_s3_bucket_policy" "mail_ses_write" {
       Resource  = "${aws_s3_bucket.mail.arn}/inbox/*"
       Condition = {
         StringEquals = { "AWS:SourceAccount" = data.aws_caller_identity.current.account_id }
-        ArnLike      = { "AWS:SourceArn" = "arn:aws:ses:${var.region}:${data.aws_caller_identity.current.account_id}:receipt-rule-set/${var.name_prefix}-rules:receipt-rule/*" }
+        # Trust rules in the local set and the shared set (migration). ArnLike over a list is OR.
+        ArnLike = { "AWS:SourceArn" = [
+          for rs in ["${var.name_prefix}-rules", var.shared_rule_set_name] :
+          "arn:aws:ses:${var.region}:${data.aws_caller_identity.current.account_id}:receipt-rule-set/${rs}:receipt-rule/*"
+        ] }
       }
     }]
   })

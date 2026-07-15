@@ -23,6 +23,13 @@ variable "admin_reply_from" {
   default = "auto@bot.carolinascourier.com"
 }
 
+variable "shared_rule_set_name" {
+  type    = string
+  default = "ccs-bot-rules"
+  # During the migration to the shared SES receipt rule set, the mail bucket policy must
+  # also trust SES writes from rules in this set, not just the local ${name_prefix}-rules.
+}
+
 variable "instance_type" {
   type    = string
   default = "t4g.nano"
