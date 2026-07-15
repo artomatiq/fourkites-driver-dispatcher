@@ -22,6 +22,7 @@ locals {
     queue_url        = aws_sqs_queue.intake.id
     mail_bucket      = aws_s3_bucket.mail.id
     reply_from       = var.admin_reply_from
+    reply_to         = "${var.intake_local_part}@${var.mail_domain}"
     bedrock_model_id = var.bedrock_model_id
     ssm_prefix       = local.ssm_prefix
   })

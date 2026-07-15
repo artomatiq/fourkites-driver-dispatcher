@@ -24,6 +24,7 @@ REGION = os.environ["AWS_REGION"]
 QUEUE_URL = os.environ["QUEUE_URL"]
 MAIL_BUCKET = os.environ["MAIL_BUCKET"]
 REPLY_FROM = os.environ["REPLY_FROM"]
+REPLY_TO = os.environ["REPLY_TO"]  # intake address; replies route back into the pipeline
 BEDROCK_MODEL_ID = os.environ["BEDROCK_MODEL_ID"]
 SSM_PREFIX = os.environ["SSM_PREFIX"]
 
@@ -175,6 +176,7 @@ def reply(to_addr: str, subject: str, text: str) -> None:
     ses.send_email(
         Source=REPLY_FROM,
         Destination={"ToAddresses": [to_addr]},
+        ReplyToAddresses=[REPLY_TO],
         Message={"Subject": {"Data": subject}, "Body": {"Text": {"Data": text}}},
     )
 

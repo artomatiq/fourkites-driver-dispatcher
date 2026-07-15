@@ -16,9 +16,9 @@ resource "aws_ses_active_receipt_rule_set" "main" {
 resource "aws_ses_receipt_rule" "intake_to_s3" {
   name          = "${var.name_prefix}-intake-to-s3"
   rule_set_name = "${var.name_prefix}-rules"
-  # Accept both the intake address and the bot's reply-from, so a human can reply to
-  # the auto-reply and have it loop back into the pipeline.
-  recipients    = ["${var.intake_local_part}@${var.mail_domain}", var.admin_reply_from]
+  # Single intake address. The bot sends From auto@ but stamps Reply-To: dispatch@, so
+  # human replies come back here — auto@ is send-only and doesn't need to receive.
+  recipients    = ["${var.intake_local_part}@${var.mail_domain}"]
   enabled       = true
   scan_enabled  = true
 
