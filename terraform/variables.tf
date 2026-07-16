@@ -20,7 +20,8 @@ variable "intake_local_part" {
 
 variable "admin_reply_from" {
   type    = string
-  default = "auto@bot.carolinascourier.com"
+  # Display name renders as the sender in mail clients; address must stay a verified identity.
+  default = "CCS Bot <auto@bot.carolinascourier.com>"
 }
 
 variable "shared_rule_set_name" {
